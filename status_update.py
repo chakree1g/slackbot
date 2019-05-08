@@ -246,7 +246,7 @@ class SlackProjectStatusAPI:
         self.send_email()
         logging.info('Processed status messages')
 
-slack_token = "xoxp-624588002999-624922980694-622225453108-16927ef3eb502a617d7bee2636b90151"
+slack_token = "xoxp-624588002999-624922980694-623740519473-6b676a39cc790d60b3a6066a6a2b086c"
 channel_name = "status-test"
 
 
