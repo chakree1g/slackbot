@@ -1,0 +1,153 @@
+def slackbot_command_parse(input_line_of_text,begins_with='/slackbot '):
+    """ Evaluate an input line of text, extract and return a data structure for a slackbot command.
+    Data structure: dictionary, with 5 keys:
+       'Command','Task Name','Task Description','Priority Level','Percent Progress'
+    Values for keys ('Command','Task Name','Task Description') are strings
+    Values for keys ('Priority Level','Percent Progress') are integers or empty strings.
+    Basic command parameter value verification is performed.
+    :param input_line_of_text: input line of text.
+    :param begins_with: string that the command is supposed to start with.
+    """
+
+    # declare returned data structure
+    ret_dict = {}
+
+    # some local constants
+    PRIORITY_LEVEL_LIST = [0,1,2]
+
+    try:
+        # there probably is a smarter and more compact way to do this parsing, with a regexp ;)
+
+        # trim leftmost and rightmost spaces, just in case
+        working_text = input_line_of_text.strip()
+
+        # check that the line starts with '/slackbot '(slash, 'slackbot', space)
+        if working_text.startswith(begins_with):
+            # extracts what comes after /slackbot'; str.partition() returns a tuple, and we want the 3rd element
+            command_text = working_text.partition(begins_with)[2].strip()
+
+            # following blocks: specific processing for slackbot commands; a space is required after a command.
+            # specific processing for create
+            COMMAND = 'create '
+            if command_text.startswith(COMMAND):
+                params = command_text.partition(COMMAND)[2].strip()
+                param_list = params.split(':')
+                # length must be exactly 4, and all parameters must be correct
+                if len(param_list) == 4:
+                    # basic parameter value checks
+                    if ( (len(param_list[0])>0) and (len(param_list[1])>0) and
+                         (int(param_list[2]) in PRIORITY_LEVEL_LIST) and (int(param_list[3]) in range(0,101)) ):
+                        ret_dict = {'Command':COMMAND,
+                                    'Task Name':param_list[0], 'Task Description':param_list[1],
+                                    'Priority Level':int(param_list[2]), 'Percent Progress':int(param_list[3])}
+
+            # specific processing for update
+            COMMAND = 'update '
+            if command_text.startswith(COMMAND):
+                params = command_text.partition(COMMAND)[2].strip()
+                param_list = params.split(':')
+                # length must be exactly 4, but TD and PL can be empty
+                if len(param_list) == 4:
+                    # basic parameter value checks: only TN and PP; TD can be added even if empty, no need to check
+                    if ( (len(param_list[0]) > 0) and (int(param_list[3]) in range(0,101)) ):
+                        # check for optional PL; don't create return value if incorrect (if it's there, it has to be valid)
+                        if len(param_list[2])>0:
+                            if int(param_list[2]) in PRIORITY_LEVEL_LIST:
+                                ret_dict = {'Command': COMMAND,
+                                            'Task Name': param_list[0], 'Task Description': param_list[1],
+                                            'Priority Level': int(param_list[2]), 'Percent Progress': int(param_list[3])}
+                            # else, do not return the dictionary: priority level was invalid
+                        else:
+                            ret_dict = {'Command': COMMAND,
+                                        'Task Name': param_list[0], 'Task Description': param_list[1],
+                                        'Priority Level': '', 'Percent Progress': int(param_list[3])}
+
+            # specific processing for suspend
+            COMMAND = 'suspend '
+            if command_text.startswith(COMMAND):
+                params = command_text.partition(COMMAND)[2].strip()
+                param_list = params.split(':')
+                # length should be exactly 1
+                if (len(param_list) == 1):
+                    # basic parameter value checks: only TN
+                    if (len(param_list[0]) > 0):
+                        ret_dict = {'Command': COMMAND,
+                                    'Task Name': param_list[0], 'Task Description': '',
+                                    'Priority Level': '', 'Percent Progress': ''}
+
+            # specific processing for abandon
+            COMMAND = 'abandon '
+            if command_text.startswith(COMMAND):
+                params = command_text.partition(COMMAND)[2].strip()
+                param_list = params.split(':')
+                # length should be exactly 1
+                if (len(param_list) == 1):
+                    # basic parameter value checks: only TN
+                    if (len(param_list[0]) > 0):
+                        ret_dict = {'Command': COMMAND,
+                                    'Task Name': param_list[0], 'Task Description': '',
+                                    'Priority Level': '', 'Percent Progress': ''}
+
+        return ret_dict
+
+    except:
+        # no slackbot command match, so return variable is not modified, and is left empty
+        return ret_dict
+
+
+if __name__ == "__main__":
+
+    good_test_lines = ['/slackbot create myTaskA:plain vanilla task:1:10',
+                       '/slackbot update myTaskA:::40',
+                       '/slackbot update myTaskA:new description::40',
+                       '/slackbot update myTaskA::0:40',
+                       '/slackbot update myTaskA:::75',
+                       '/slackbot update myTaskA:::100',
+                       '/slackbot create myTaskB:super duper task:2:5',
+                       '/slackbot update myTaskB:::20',
+                       '/slackbot suspend myTaskB',
+                       '/slackbot update myTaskB:not so super duper task after all:0:20',
+                       '/slackbot update myTaskB:::50',
+                       '/slackbot update myTaskB:::100',
+                       '/slackbot create myTaskC:out of left field task:1:20',
+                       '/slackbot update myTaskC:::40',
+                       '/slackbot update myTaskC:::30',
+                       '/slackbot update myTaskC::0:30',
+                       '/slackbot update myTaskC:::50',
+                       '/slackbot update myTaskC:::40',
+                       '/slackbot abandon myTaskC'
+                      ]
+    print('Good test lines:')
+    for test_line in good_test_lines:
+        print (test_line,':\n   ',slackbot_command_parse(test_line))
+
+
+    badd_test_lines = ['/slackbott create myTaskA:plain vanilla task:1:10',
+                       'slackbot create myTaskA:plain vanilla task:1:10',
+                       '/slackbot createmyTaskA:plain vanilla task:1:10',
+                       '/slackbotcreate myTaskA:plain vanilla task:1:10',
+                       '/slackbot create myTaskA:plain vanilla task:3:10',
+                       '/slackbot create myTaskA:plain vanilla task:1:200',
+                       '/slackbot create myTaskA:plain vanilla task:1:10:45',
+                       '/slackbot create myTaskA:plain vanilla task:hello:10',
+                       '/slackbot create myTaskA:plain vanilla task:1:uhuh',
+                       '/slackbot create :plain vanilla task:1:uhuh',
+                       '/slackbot update myTaskA::40',
+                       '/slackbot update myTaskA:40',
+                       '/slackbot update myTaskA::4:40',
+                       '/slackbot update myTaskA:::400',
+                       '/slackbot update :::75',
+                       '/slackbot suspend myTaskB:::',
+                       '/slackbot suspend myTaskB::',
+                       '/slackbot suspend myTaskB:',
+                       '/slackbot suspend myTaskB:::350',
+                       '/slackbot abandon myTaskC:::',
+                       '/slackbot abandon myTaskC::',
+                       '/slackbot abandon myTaskC:',
+                       '/slackbot abandon myTaskC::3:',
+                       '/slackbot abandon myTaskC:::102'
+                       ]
+    print()
+    print('Bad test lines:')
+    for test_line in badd_test_lines:
+        print(test_line, ':\n   ', slackbot_command_parse(test_line))
